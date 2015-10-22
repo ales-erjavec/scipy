@@ -34,6 +34,10 @@ __all__ = ['mvsdist',
            'pdf_fromgamma', 'circmean', 'circvar', 'circstd', 'anderson_ksamp'
            ]
 
+Mean = namedtuple('Mean', ('statistic', 'minmax'))
+Variance = namedtuple('Variance', ('statistic', 'minmax'))
+Std_dev = namedtuple('Std_dev', ('statistic', 'minmax'))
+
 
 def bayes_mvs(data, alpha=0.90):
     """
@@ -83,10 +87,6 @@ def bayes_mvs(data, alpha=0.90):
     if alpha >= 1 or alpha <= 0:
         raise ValueError("0 < alpha < 1 is required, but alpha=%s was given."
                          % alpha)
-
-    Mean = namedtuple('Mean', ('statistic', 'minmax'))
-    Variance = namedtuple('Variance', ('statistic', 'minmax'))
-    Std_dev = namedtuple('Std_dev', ('statistic', 'minmax'))
 
     m_res = Mean(m.mean(), m.interval(alpha))
     v_res = Variance(v.mean(), v.interval(alpha))
@@ -1098,6 +1098,10 @@ _Avals_gumbel = array([0.474, 0.637, 0.757, 0.877, 1.038])
 #             Vol. 66, Issue 3, Dec. 1979, pp 591-595.
 _Avals_logistic = array([0.426, 0.563, 0.660, 0.769, 0.906, 1.010])
 
+AndersonResult = namedtuple('AndersonResult',
+                            ('statistic', 'critical_values',
+                             'significance_level'))
+
 
 def anderson(x, dist='norm'):
     """
@@ -1207,9 +1211,6 @@ def anderson(x, dist='norm'):
     i = arange(1, N + 1)
     A2 = -N - sum((2*i - 1.0) / N * (log(z) + log(1 - z[::-1])), axis=0)
 
-    AndersonResult = namedtuple('AndersonResult', ('statistic',
-                                                   'critical_values',
-                                                   'significance_level'))
     return AndersonResult(A2, critical, sig)
 
 
@@ -1292,6 +1293,10 @@ def _anderson_ksamp_right(samples, Z, Zstar, k, n, N):
         inner = lj / float(N) * (N * Mij - Bj * n[i])**2 / (Bj * (N - Bj))
         A2kN += inner.sum() / n[i]
     return A2kN
+
+Anderson_ksampResult = namedtuple('Anderson_ksampResult',
+                                  ('statistic', 'critical_values',
+                                   'significance_level'))
 
 
 def anderson_ksamp(samples, midrank=True):
@@ -1431,10 +1436,9 @@ def anderson_ksamp(samples, midrank=True):
 
     p = math.exp(np.polyval(pf, A2))
 
-    Anderson_ksampResult = namedtuple('Anderson_ksampResult',
-                                      ('statistic', 'critical_values',
-                                       'significance_level'))
     return Anderson_ksampResult(A2, critical, p)
+
+AnsariResult = namedtuple('AnsariResult', ('statistic', 'pvalue'))
 
 
 def ansari(x, y):
@@ -1481,8 +1485,6 @@ def ansari(x, y):
         raise ValueError("Not enough other observations.")
     if n < 1:
         raise ValueError("Not enough test observations.")
-
-    AnsariResult = namedtuple('AnsariResult', ('statistic', 'pvalue'))
 
     N = m + n
     xy = r_[x, y]  # combine
@@ -1531,6 +1533,8 @@ def ansari(x, y):
     pval = distributions.norm.sf(abs(z)) * 2.0
     return AnsariResult(AB, pval)
 
+BartlettResult = namedtuple('BartlettResult', ('statistic', 'pvalue'))
+
 
 def bartlett(*args):
     """
@@ -1577,8 +1581,9 @@ def bartlett(*args):
     T = numer / denom
     pval = distributions.chi2.sf(T, k - 1)  # 1 - cdf
 
-    BartlettResult = namedtuple('BartlettResult', ('statistic', 'pvalue'))
     return BartlettResult(T, pval)
+
+LeveneResult = namedtuple('LeveneResult', ('statistic', 'pvalue'))
 
 
 def levene(*args, **kwds):
@@ -1689,7 +1694,6 @@ def levene(*args, **kwds):
     W = numer / denom
     pval = distributions.f.sf(W, k-1, Ntot-k)  # 1 - cdf
 
-    LeveneResult = namedtuple('LeveneResult', ('statistic', 'pvalue'))
     return LeveneResult(W, pval)
 
 
@@ -1768,6 +1772,8 @@ def _apply_func(x, g, func):
         output.append(func(x[g[k]:g[k+1]]))
 
     return asarray(output)
+
+FlignerResult = namedtuple('FlignerResult', ('statistic', 'pvalue'))
 
 
 def fligner(*args, **kwds):
@@ -1987,6 +1993,8 @@ def mood(x, y, axis=0):
 
     return z, pval
 
+WilcoxonResult = namedtuple('WilcoxonResult', ('statistic', 'pvalue'))
+
 
 def wilcoxon(x, y=None, zero_method="wilcox", correction=False):
     """
@@ -2083,8 +2091,6 @@ def wilcoxon(x, y=None, zero_method="wilcox", correction=False):
     correction = 0.5 * int(bool(correction)) * np.sign(T - mn)
     z = (T - mn - correction) / se
     prob = 2. * distributions.norm.sf(abs(z))
-
-    WilcoxonResult = namedtuple('WilcoxonResult', ('statistic', 'pvalue'))
     return WilcoxonResult(T, prob)
 
 

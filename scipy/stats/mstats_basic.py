@@ -256,6 +256,8 @@ def rankdata(data, axis=None, use_missing=False):
     else:
         return ma.apply_along_axis(_rank1d,axis,data,use_missing).view(ndarray)
 
+ModeResult = namedtuple('ModeResult', ('mode', 'count'))
+
 
 def mode(a, axis=0):
     a, axis = _chk_asarray(a, axis)
@@ -285,7 +287,6 @@ def mode(a, axis=0):
         counts = output[tuple(slices)].reshape(newshape)
         output = (modes, counts)
 
-    ModeResult = namedtuple('ModeResult', ('mode', 'count'))
     return ModeResult(*output)
 mode.__doc__ = stats.mode.__doc__
 
@@ -365,6 +366,8 @@ def pearsonr(x,y):
         prob = betai(0.5*df, 0.5, df/(df + t_squared))
 
     return r, prob
+
+SpearmanrResult = namedtuple('SpearmanrResult', ('correlation', 'pvalue'))
 
 
 def spearmanr(x, y, use_ties=True):
@@ -448,8 +451,9 @@ def spearmanr(x, y, use_ties=True):
     else:
         prob = betai(0.5*df,0.5,df/(df+t*t))
 
-    SpearmanrResult = namedtuple('SpearmanrResult', ('correlation', 'pvalue'))
     return SpearmanrResult(rho, prob)
+
+KendalltauResult = namedtuple('KendalltauResult', ('correlation', 'pvalue'))
 
 
 def kendalltau(x, y, use_ties=True, use_missing=False):
@@ -483,8 +487,6 @@ def kendalltau(x, y, use_ties=True, use_missing=False):
         x = ma.array(x, mask=m, copy=True)
         y = ma.array(y, mask=m, copy=True)
         n -= m.sum()
-
-    KendalltauResult = namedtuple('KendalltauResult', ('correlation', 'pvalue'))
 
     if n < 2:
         return KendalltauResult(np.nan, np.nan)
@@ -596,6 +598,10 @@ def kendalltau_seasonal(x):
     return output
 
 
+PointbiserialrResult = namedtuple('PointbiserialrResult',
+                                  ('correlation', 'pvalue'))
+
+
 def pointbiserialr(x, y):
     x = ma.fix_invalid(x, copy=True).astype(bool)
     y = ma.fix_invalid(y, copy=True).astype(float)
@@ -619,13 +625,14 @@ def pointbiserialr(x, y):
     df = n-2
     t = rpb*ma.sqrt(df/(1.0-rpb**2))
     prob = betai(0.5*df, 0.5, df/(df+t*t))
-
-    PointbiserialrResult = namedtuple('PointbiserialrResult', ('correlation',
-                                                               'pvalue'))
     return PointbiserialrResult(rpb, prob)
 
 if stats.pointbiserialr.__doc__:
     pointbiserialr.__doc__ = stats.pointbiserialr.__doc__ + genmissingvaldoc
+
+LinregressResult = namedtuple('LinregressResult',
+                              ('slope', 'intercept', 'rvalue', 'pvalue',
+                               'stderr'))
 
 
 def linregress(*args):
@@ -663,9 +670,6 @@ def linregress(*args):
     else:
         slope, intercept, r, prob, sterrest = stats.linregress(x.data, y.data)
 
-    LinregressResult = namedtuple('LinregressResult', ('slope', 'intercept',
-                                                       'rvalue', 'pvalue',
-                                                       'stderr'))
     return LinregressResult(slope, intercept, r, prob, sterrest)
 
 if stats.linregress.__doc__:
@@ -701,6 +705,8 @@ def sen_seasonal_slopes(x):
     medslope = ma.median(szn_slopes, axis=None)
     return szn_medslopes, medslope
 
+Ttest_1sampResult = namedtuple('Ttest_1sampResult', ('statistic', 'pvalue'))
+
 
 def ttest_1samp(a, popmean, axis=0):
     a, axis = _chk_asarray(a, axis)
@@ -714,17 +720,16 @@ def ttest_1samp(a, popmean, axis=0):
     svar = ((n - 1) * v) / df
     t = (x - popmean) / ma.sqrt(svar / n)
     prob = betai(0.5 * df, 0.5, df / (df + t*t))
-
-    Ttest_1sampResult = namedtuple('Ttest_1sampResult', ('statistic', 'pvalue'))
     return Ttest_1sampResult(t, prob)
 ttest_1samp.__doc__ = stats.ttest_1samp.__doc__
 ttest_onesamp = ttest_1samp
+
+Ttest_indResult = namedtuple('Ttest_indResult', ('statistic', 'pvalue'))
 
 
 def ttest_ind(a, b, axis=0):
     a, b, axis = _chk2_asarray(a, b, axis)
 
-    Ttest_indResult = namedtuple('Ttest_indResult', ('statistic', 'pvalue'))
     if a.size == 0 or b.size == 0:
         return Ttest_indResult(np.nan, np.nan)
 
@@ -740,13 +745,14 @@ def ttest_ind(a, b, axis=0):
     return Ttest_indResult(t, probs.squeeze())
 ttest_ind.__doc__ = stats.ttest_ind.__doc__
 
+Ttest_relResult = namedtuple('Ttest_relResult', ('statistic', 'pvalue'))
+
 
 def ttest_rel(a, b, axis=0):
     a, b, axis = _chk2_asarray(a, b, axis)
     if len(a) != len(b):
         raise ValueError('unequal length arrays')
 
-    Ttest_relResult = namedtuple('Ttest_relResult', ('statistic', 'pvalue'))
     if a.size == 0 or b.size == 0:
         return Ttest_relResult(np.nan, np.nan)
 
@@ -767,6 +773,9 @@ ttest_rel.__doc__ = stats.ttest_rel.__doc__
 # For backwards compatibilty, stats.chisquare is included in
 # the stats.mstats namespace.
 chisquare = stats.chisquare
+
+MannwhitneyuResult = namedtuple('MannwhitneyuResult',
+                                ('statistic', 'pvalue'))
 
 
 def mannwhitneyu(x,y, use_continuity=True):
@@ -813,10 +822,9 @@ def mannwhitneyu(x,y, use_continuity=True):
         z = (U - mu) / ma.sqrt(sigsq)
 
     prob = special.erfc(abs(z)/np.sqrt(2))
-
-    MannwhitneyuResult = namedtuple('MannwhitneyuResult', ('statistic',
-                                                           'pvalue'))
     return MannwhitneyuResult(u, prob)
+
+KruskalResult = namedtuple('KruskalResult', ('statistic', 'pvalue'))
 
 
 def kruskalwallis(*args):
@@ -836,7 +844,6 @@ def kruskalwallis(*args):
     df = len(output) - 1
     prob = stats.chisqprob(H,df)
 
-    KruskalResult = namedtuple('KruskalResult', ('statistic', 'pvalue'))
     return KruskalResult(H, prob)
 kruskal = kruskalwallis
 kruskalwallis.__doc__ = stats.kruskal.__doc__
@@ -1535,6 +1542,10 @@ def kurtosis(a, axis=0, fisher=True, bias=True):
         return vals
 kurtosis.__doc__ = stats.kurtosis.__doc__
 
+DescribeResult = namedtuple('DescribeResult',
+                            ('nobs', 'minmax', 'mean', 'variance', 'skewness',
+                             'kurtosis'))
+
 
 def describe(a, axis=0, ddof=0):
     """
@@ -1595,10 +1606,6 @@ def describe(a, axis=0, ddof=0):
     sk = skew(a, axis)
     kurt = kurtosis(a, axis)
 
-    DescribeResult = namedtuple('DescribeResult', ('nobs', 'minmax', 'mean',
-                                                   'variance', 'skewness',
-                                                   'kurtosis'))
-
     return DescribeResult(n, mm, m, v, sk, kurt)
 
 
@@ -1631,6 +1638,8 @@ def stde_median(data, axis=None):
                              "but got data.ndim = %d" % data.ndim)
         return ma.apply_along_axis(_stdemed_1D, axis, data)
 
+SkewtestResult = namedtuple('SkewtestResult', ('statistic', 'pvalue'))
+
 
 def skewtest(a, axis=0):
     a, axis = _chk_asarray(a, axis)
@@ -1651,10 +1660,11 @@ def skewtest(a, axis=0):
     alpha = ma.sqrt(2.0/(W2-1))
     y = ma.where(y == 0, 1, y)
     Z = delta*ma.log(y/alpha + ma.sqrt((y/alpha)**2+1))
-
-    SkewtestResult = namedtuple('SkewtestResult', ('statistic', 'pvalue'))
     return SkewtestResult(Z, 2 * distributions.norm.sf(np.abs(Z)))
 skewtest.__doc__ = stats.skewtest.__doc__
+
+KurtosistestResult = namedtuple('KurtosistestResult',
+                                ('statistic', 'pvalue'))
 
 
 def kurtosistest(a, axis=0):
@@ -1686,11 +1696,10 @@ def kurtosistest(a, axis=0):
 
     term2 = ma.power((1-2.0/A)/denom,1/3.0)
     Z = (term1 - term2) / np.sqrt(2/(9.0*A))
-
-    KurtosistestResult = namedtuple('KurtosistestResult', ('statistic',
-                                                           'pvalue'))
     return KurtosistestResult(Z, 2 * distributions.norm.sf(np.abs(Z)))
 kurtosistest.__doc__ = stats.kurtosistest.__doc__
+
+NormaltestResult = namedtuple('NormaltestResult', ('statistic', 'pvalue'))
 
 
 def normaltest(a, axis=0):
@@ -1699,7 +1708,6 @@ def normaltest(a, axis=0):
     k, _ = kurtosistest(a, axis)
     k2 = s*s + k*k
 
-    NormaltestResult = namedtuple('NormaltestResult', ('statistic', 'pvalue'))
     return NormaltestResult(k2, stats.chisqprob(k2, 2))
 normaltest.__doc__ = stats.normaltest.__doc__
 
@@ -2001,6 +2009,8 @@ def sem(a, axis=0, ddof=1):
     s = a.std(axis=axis, ddof=ddof) / ma.sqrt(n)
     return s
 
+F_onewayResult = namedtuple('F_onewayResult', ('statistic', 'pvalue'))
+
 
 zmap = stats.zmap
 zscore = stats.zscore
@@ -2035,8 +2045,6 @@ def f_oneway(*args):
     msw = sswg/float(dfwg)
     f = msb/msw
     prob = special.fdtrc(dfbg, dfwg, f)  # equivalent to stats.f.sf
-
-    F_onewayResult = namedtuple('F_onewayResult', ('statistic', 'pvalue'))
     return F_onewayResult(f, prob)
 
 
@@ -2056,6 +2064,9 @@ def f_value_wilks_lambda(ER, EF, dfnum, dfden, a, b):
     n_um = (1 - lmbda**(1.0/q))*(a-1)*(b-1)
     d_en = lmbda**(1.0/q) / (n_um*q - 0.5*(a-1)*(b-1) + 1)
     return n_um / d_en
+
+FriedmanchisquareResult = namedtuple('FriedmanchisquareResult',
+                                     ('statistic', 'pvalue'))
 
 
 def friedmanchisquare(*args):
@@ -2101,6 +2112,4 @@ def friedmanchisquare(*args):
     ssbg = np.sum((ranked.sum(-1) - n*(k+1)/2.)**2)
     chisq = ssbg * 12./(n*k*(k+1)) * 1./tie_correction
 
-    FriedmanchisquareResult = namedtuple('FriedmanchisquareResult',
-                                         ('statistic', 'pvalue'))
     return FriedmanchisquareResult(chisq, stats.chisqprob(chisq, k-1))
