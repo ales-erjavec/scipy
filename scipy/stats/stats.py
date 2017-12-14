@@ -2300,6 +2300,25 @@ def zmap(scores, compare, axis=0, ddof=0):
         return (scores - mns) / sstd
 
 
+def _reduce_shape(shape, axis, keepdims):
+    """
+    Parameters
+    ---------
+    shape : tuple
+    axis : int or None
+    keepdims : bool
+    """
+    shape = list(shape)
+    if axis is None and not keepdims:
+        return np.product.reduce(shape)
+    elif keepdims:
+        r = [1]
+    else:
+        r = []
+    shape = shape[:axis] + r + shape[axis:]
+    return tuple(shape)
+
+
 # Private dictionary initialized only once at module level
 # See https://en.wikipedia.org/wiki/Robust_measures_of_scale
 _scale_conversions = {'raw': 1.0,
@@ -2429,7 +2448,7 @@ def iqr(x, axis=None, rng=(25, 75), scale='raw', nan_policy='propagate',
     # This check prevents percentile from raising an error later. Also, it is
     # consistent with `np.var` and `np.std`.
     if not x.size:
-        return np.nan
+        return np.full(_reduce_shape(x.shape, axis, keepdims), np.nan)
 
     # An error may be raised here, so fail-fast, before doing lengthy
     # computations, even though `scale` is not used until later
