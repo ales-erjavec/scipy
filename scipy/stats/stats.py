@@ -2827,7 +2827,7 @@ def trim_mean(a, proportiontocut, axis=0):
 F_onewayResult = namedtuple('F_onewayResult', ('statistic', 'pvalue'))
 
 
-def f_oneway(*args):
+def f_oneway(*args, **kwargs):
     """
     Performs a 1-way ANOVA.
 
@@ -2838,13 +2838,18 @@ def f_oneway(*args):
     Parameters
     ----------
     sample1, sample2, ... : array_like
-        The sample measurements for each group.
+        The sample measurements for each group. If `axis` is not `None` then
+        all arrays must match the shape in all dimensions except `axis`.
+
+    axis : int or None, optional
+        Axis along which to compute test. If None (default), compute over
+        the whole arrays, `sample1`, `sample2`, ...
 
     Returns
     -------
-    statistic : float
+    statistic : float or array
         The computed F-value of the test.
-    pvalue : float
+    pvalue : float or array
         The associated p-value from the F-distribution.
 
     Notes
@@ -2898,26 +2903,33 @@ def f_oneway(*args):
 
     """
     args = [np.asarray(arg, dtype=float) for arg in args]
+    axis = kwargs.pop("axis", None)
+
+    if axis is None:
+        args = [arr.ravel() for arr in args]
+        axis = 0
     # ANOVA on N groups, each in its own array
     num_groups = len(args)
-    alldata = np.concatenate(args)
-    bign = len(alldata)
+
+    alldata = np.concatenate(args, axis=axis)
+    bign = alldata.shape[axis]
 
     # Determine the mean of the data, and subtract that from all inputs to a
     # variance (via sum_of_sq / sq_of_sum) calculation.  Variance is invariance
     # to a shift in location, and centering all data around zero vastly
     # improves numerical stability.
-    offset = alldata.mean()
+    offset = alldata.mean(axis=axis, keepdims=True)
     alldata -= offset
 
-    sstot = _sum_of_squares(alldata) - (_square_of_sums(alldata) / float(bign))
-    ssbn = 0
+    sstot = (_sum_of_squares(alldata, axis=axis, keepdims=True) -
+             (_square_of_sums(alldata, axis=axis, keepdims=True) / float(bign)))
+    ssbn = np.zeros_like(offset)
     for a in args:
-        ssbn += _square_of_sums(a - offset) / float(len(a))
+        ssbn += _square_of_sums(a - offset, axis=axis, keepdims=True) / float(a.shape[axis])
 
     # Naming: variables ending in bn/b are for "between treatments", wn/w are
     # for "within treatments"
-    ssbn -= (_square_of_sums(alldata) / float(bign))
+    ssbn -= (_square_of_sums(alldata, axis=axis, keepdims=True) / float(bign))
     sswn = sstot - ssbn
     dfbn = num_groups - 1
     dfwn = bign - num_groups
@@ -2926,6 +2938,14 @@ def f_oneway(*args):
     f = msb / msw
 
     prob = special.fdtrc(dfbn, dfwn, f)   # equivalent to stats.f.sf
+
+    f = np.squeeze(f, axis=axis)
+    prob = np.squeeze(prob, axis=axis)
+
+    if f.ndim == 0:
+        assert prob.ndim == 0
+        f = np.asscalar(f)
+        prob = np.asscalar(prob)
 
     return F_onewayResult(f, prob)
 
@@ -5574,7 +5594,7 @@ def find_repeats(arr):
     return RepeatedResults(*_find_repeats(np.array(arr, dtype=np.float64)))
 
 
-def _sum_of_squares(a, axis=0):
+def _sum_of_squares(a, axis=0, keepdims=False):
     """
     Square each element of the input array, and return the sum(s) of that.
 
@@ -5597,10 +5617,10 @@ def _sum_of_squares(a, axis=0):
     `_sum_of_squares`).
     """
     a, axis = _chk_asarray(a, axis)
-    return np.sum(a*a, axis)
+    return np.sum(a*a, axis, keepdims=keepdims)
 
 
-def _square_of_sums(a, axis=0):
+def _square_of_sums(a, axis=0, keepdims=False):
     """
     Sum elements of the input array, and return the square(s) of that sum.
 
@@ -5622,7 +5642,7 @@ def _square_of_sums(a, axis=0):
     _sum_of_squares : The sum of squares (the opposite of `square_of_sums`).
     """
     a, axis = _chk_asarray(a, axis)
-    s = np.sum(a, axis)
+    s = np.sum(a, axis, keepdims=keepdims)
     if not np.isscalar(s):
         return s.astype(float) * s
     else:
